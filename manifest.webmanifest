@@ -1,7 +1,7 @@
 {
   "name": "Referto Minibasket",
   "short_name": "Referto MB",
-  "description": "Referto elettronico per le gare di Minibasket FIP",
+  "description": "Referto elettronico per le gare di Minibasket FIP - Polisportiva Senna",
   "lang": "it",
   "start_url": "./index.html",
   "scope": "./",
@@ -11,7 +11,6 @@
   "theme_color": "#14365d",
   "icons": [
     { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
-    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" },
-    { "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml" }
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
   ]
 }

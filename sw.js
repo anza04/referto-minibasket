@@ -1,9 +1,9 @@
 /* Service worker: rende l'app completamente utilizzabile offline */
-const CACHE = 'referto-mb-v5';
+const CACHE = 'referto-mb-v6';
 const ASSETS = [
   './', './index.html', './manifest.webmanifest', './css/app.css',
   './js/templates.js', './js/rules.js', './js/engine.js', './js/xlsx.js', './js/storage.js', './js/app.js',
-  './icons/icon.svg', './icons/icon-192.png', './icons/icon-512.png'
+  './icons/logo-senna.png', './icons/icon-48.png', './icons/icon-180.png', './icons/icon-192.png', './icons/icon-512.png'
 ];
 
 self.addEventListener('install', e => {

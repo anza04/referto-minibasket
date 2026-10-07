@@ -1,4 +1,8 @@
-# Referto Minibasket
+# Referto Minibasket – Polisportiva Senna
+
+<img src="icons/logo-senna.png" alt="Polisportiva Senna" width="120">
+
+App di proprietà della **Polisportiva Senna**.
 
 Web app offline per compilare il referto delle gare di Minibasket FIP, con le regole del
 **Regolamento di gioco 2026/2027** e l'esportazione del **referto ufficiale Excel** (modelli 5c5, 4c4,

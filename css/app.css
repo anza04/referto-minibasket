@@ -298,3 +298,18 @@ table.sum td.l, table.sum th.l { text-align: left; }
   #print .sign img { display: block; max-height: 42px; max-width: 100%; margin: 0 auto 2px; }
   #print .sign .blank { display: block; height: 42px; }
 }
+
+/* ---------- logo Polisportiva Senna ---------- */
+.brand-logo { width: 34px; height: 34px; border-radius: 50%; background: #fff; object-fit: contain; padding: 2px; flex-shrink: 0; }
+.hero-brand { display: flex; align-items: center; gap: 14px; }
+.hero-logo { width: 84px; height: 84px; border-radius: 16px; background: #fff; object-fit: contain; padding: 4px; flex-shrink: 0; }
+@media (max-width: 760px) { .hero-logo { width: 60px; height: 60px; } }
+.owner { display: flex; align-items: center; justify-content: center; gap: 10px; margin: 24px 0 8px; color: var(--muted); font-size: .9rem; }
+.owner img { border-radius: 50%; background: #fff; padding: 2px; }
+.print-head { display: none; }
+@media print {
+  #print .print-head { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
+  #print .print-head img { width: 44px; height: 44px; }
+  #print .print-head h1 { flex: 1; margin: 0; }
+  #print .print-head span { font-size: 8pt; font-weight: 700; }
+}

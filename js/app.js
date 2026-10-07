@@ -182,6 +182,10 @@
     }
   }
 
+  function ownerFooter() {
+    return `<footer class="owner"><img src="icons/logo-senna.png" alt="" width="40" height="40"><span>App di proprietà della <b>Polisportiva Senna</b></span></footer>`;
+  }
+
   // ================================================================= HOME
   function renderHome() {
     const games = Games.list();
@@ -205,9 +209,12 @@
     const set = Settings.get();
     app.innerHTML = `
       <div class="card hero">
-        <div>
-          <h1>Referto Minibasket</h1>
-          <p class="muted">Segnapunti elettronico con le regole FIP 2026/2027 e compilazione del referto ufficiale.</p>
+        <div class="hero-brand">
+          <img src="icons/logo-senna.png" alt="Polisportiva Senna" class="hero-logo">
+          <div>
+            <h1>Referto Minibasket</h1>
+            <p class="muted">Polisportiva Senna · segnapunti elettronico con le regole FIP 2026/2027 e compilazione del referto ufficiale.</p>
+          </div>
         </div>
         <div class="row">
           <button class="btn big primary" data-act="newGame">+ Nuova partita</button>
@@ -217,6 +224,7 @@
       ${set.cloud === 'none' ? `<div class="notice info">I dati sono salvati su questo dispositivo. Per salvarli anche su Google Drive configura la cartella in <a href="#" data-act="goSettings">Impostazioni</a>.</div>` : ''}
       <h2 style="margin-top:18px">Partite</h2>
       ${items || '<p class="muted">Nessuna partita salvata.</p>'}
+      ${ownerFooter()}
       <input type="file" id="importFile" accept=".json,application/json" class="hidden">`;
   }
 
@@ -934,7 +942,7 @@
       <div class="running">${running}</div>`;
     };
     $('#print').innerHTML = `
-      <h1>REFERTO UFFICIALE DI GARA ${esc(rules.name.toUpperCase())} MINIBASKET</h1>
+      <div class="print-head"><img src="icons/logo-senna.png" alt=""><h1>REFERTO UFFICIALE DI GARA ${esc(rules.name.toUpperCase())} MINIBASKET</h1><span>Polisportiva Senna</span></div>
       <div class="ph"><div>Categoria: <b>${esc(rules.categoryName)}</b></div><div>Girone: <b>${esc(info.girone)}</b></div><div>Gara n°: <b>${esc(info.gara)}</b></div><div>Data: <b>${esc(fmtDate(info.data))}</b></div><div>Ora: <b>${esc(info.ora)}</b></div><div>Campo: <b>${esc(info.campo)}</b></div>
       <div>Arbitri: <b>${esc(info.arbitri)}</b></div><div>Segnapunti: <b>${esc(info.segnapunti)}</b></div><div>Cronometrista: <b>${esc(info.cronometrista)}</b></div><div>DAE: <b>${esc(info.dae || '')}</b></div></div>
       ${team('A')}${team('B')}
@@ -991,7 +999,8 @@
         <div class="row" style="margin-top:10px"><button class="btn primary" data-act="saveGeneral">Salva</button></div>
       </div>
       <div class="card"><h2>Regole generali applicate</h2><ul class="rules">${R.GENERAL_NOTES.map(n => `<li>${esc(n)}</li>`).join('')}</ul>
-        <p class="muted">Fonte: FIP – Il Minibasket: norme organizzative generali e regolamento di gioco 2026/2027.</p></div>`;
+        <p class="muted">Fonte: FIP – Il Minibasket: norme organizzative generali e regolamento di gioco 2026/2027.</p></div>
+      ${ownerFooter()}`;
     Cloud.pendingNames().then(n => { const el = $('#queueInfo'); if (el) el.textContent = n.length ? `${n.length} file in attesa: ${n.join(', ')}` : 'Nessun file in attesa.'; });
   }
 
