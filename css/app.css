@@ -280,3 +280,21 @@ table.sum td.l, table.sum th.l { text-align: left; }
   .team-panel { padding: 8px; }
   .phase-bar .btn.big { width: 100%; }
 }
+
+/* ---------- firme ---------- */
+.sign-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; margin-top: 10px; }
+.sign-slot { border: 1px solid var(--border); border-radius: 10px; padding: 10px; display: flex; flex-direction: column; gap: 6px; }
+.sign-slot.signed { border-color: var(--ok); }
+.sign-head { display: flex; flex-direction: column; }
+.sign-preview { height: 70px; background: #fff; border-radius: 8px; border: 1px dashed var(--border); display: grid; place-items: center; overflow: hidden; }
+.sign-preview img { max-height: 64px; max-width: 100%; }
+.sign-preview .muted { color: #8a94a0; }
+.sigpad { position: relative; background: #fff; border-radius: 12px; border: 2px solid var(--border); height: min(46vh, 280px); }
+.sigpad canvas { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; cursor: crosshair; }
+.sigpad-line { position: absolute; left: 6%; right: 6%; bottom: 26%; border-bottom: 2px solid #c9ced6; pointer-events: none; }
+.sigpad-x { position: absolute; left: 3%; bottom: 27%; color: #9aa3ae; font-size: 1.2rem; pointer-events: none; }
+@media print {
+  #print .sign { grid-template-columns: repeat(6, 1fr); gap: 10px; }
+  #print .sign img { display: block; max-height: 42px; max-width: 100%; margin: 0 auto 2px; }
+  #print .sign .blank { display: block; height: 42px; }
+}

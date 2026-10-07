@@ -1,5 +1,5 @@
 /* Service worker: rende l'app completamente utilizzabile offline */
-const CACHE = 'referto-mb-v4';
+const CACHE = 'referto-mb-v5';
 const ASSETS = [
   './', './index.html', './manifest.webmanifest', './css/app.css',
   './js/templates.js', './js/rules.js', './js/engine.js', './js/xlsx.js', './js/storage.js', './js/app.js',

@@ -111,6 +111,7 @@
       this.styleCache = new Map();
       this.lines = [];
       this.circles = [];
+      this.pictures = [];
       this.fontCache = new Map();
     }
     row(n) {
@@ -433,8 +434,53 @@
         `<xdr:txBody><a:bodyPr wrap="none" lIns="0" tIns="0" rIns="0" bIns="0" rtlCol="0" anchor="ctr" anchorCtr="0"><a:noAutofit/></a:bodyPr><a:lstStyle/>` +
         `<a:p><a:pPr algn="ctr"/><a:r><a:rPr lang="it-IT" sz="5400" b="1"><a:solidFill><a:srgbClr val="${c.color}"/></a:solidFill><a:latin typeface="Arial"/></a:rPr><a:t>${c.text}</a:t></a:r></a:p></xdr:txBody></xdr:sp>`);
     });
+    const pics = sh.pictures.map(p => {
+      const f = { x: sh.emuToCol(p.x), y: sh.emuToRow(p.y) }, t = { x: sh.emuToCol(p.x + p.cx), y: sh.emuToRow(p.y + p.cy) };
+      return anchor({ c: f.x.i, co: f.x.off, r: f.y.i, ro: f.y.off }, { c: t.x.i, co: t.x.off, r: t.y.i, ro: t.y.off },
+        `<xdr:pic><xdr:nvPicPr><xdr:cNvPr id="${++id}" name="${p.name}"/><xdr:cNvPicPr><a:picLocks noChangeAspect="1"/></xdr:cNvPicPr></xdr:nvPicPr>` +
+        `<xdr:blipFill><a:blip xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" r:embed="${p.rid}"/><a:stretch><a:fillRect/></a:stretch></xdr:blipFill>` +
+        `<xdr:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${p.cx}" cy="${p.cy}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></xdr:spPr></xdr:pic>`);
+    });
     // i cerchi dopo le linee, così restano sopra
-    return xml.replace('</xdr:wsDr>', lines.join('') + circles.join('') + '</xdr:wsDr>');
+    return xml.replace('</xdr:wsDr>', lines.join('') + circles.join('') + pics.join('') + '</xdr:wsDr>');
+  }
+
+  // firme: immagini PNG posate sulle righe "FIRME" del referto
+  const SIGN_SLOTS = [
+    ['istruttoreA', 'istruttori', 0], ['istruttoreB', 'istruttori', 1],
+    ['segnapunti', 'segnapunti', 0], ['cronometrista', 'cronometrista', 0],
+    ['arbitro1', 'arbitri', 0], ['arbitro2', 'arbitri', 1]
+  ];
+  function addSignatures(sh, L, game, files) {
+    const sigs = game.signatures || {};
+    const used = SIGN_SLOTS.filter(([k, g, i]) => sigs[k] && sigs[k].img && L.signatures && L.signatures[g] && L.signatures[g][i]);
+    if (!used.length) return;
+    const drawF = files.find(f => /^xl\/drawings\/drawing\d+\.xml$/.test(f.name));
+    if (!drawF) return;
+    const relsName = drawF.name.replace(/drawings\/(drawing\d+\.xml)$/, 'drawings/_rels/$1.rels');
+    const enc = new TextEncoder(), dec = new TextDecoder();
+    let rels = files.find(f => f.name === relsName);
+    if (!rels) { rels = { name: relsName, data: enc.encode('<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"></Relationships>') }; files.push(rels); }
+    let relXml = dec.decode(rels.data);
+    used.forEach(([k, g, i]) => {
+      const sig = sigs[k];
+      const line = L.signatures[g][i];
+      const rid = 'rIdFirma_' + k;
+      files.push({ name: `xl/media/firma_${k}.png`, data: b64ToBytes(sig.img.split(',')[1]) });
+      relXml = relXml.replace('</Relationships>', `<Relationship Id="${rid}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/firma_${k}.png"/></Relationships>`);
+      // riquadro: la riga della firma e quella sopra, per tutta la larghezza
+      const x0 = sh.xToEmu(line.c0 - 1), x1 = sh.xToEmu(line.c1);
+      const y0 = sh.yToEmu(line.row - 2), y1 = sh.yToEmu(line.row);
+      const bw = (x1 - x0) * 0.92, bh = (y1 - y0) * 0.95;    // resta sotto l'etichetta
+      const scale = Math.min(bw / sig.w, bh / sig.h);
+      const cx = Math.round(sig.w * scale), cy = Math.round(sig.h * scale);
+      sh.pictures.push({ rid, name: 'Firma ' + k, cx, cy, x: Math.round(x0 + (x1 - x0 - cx) / 2), y: Math.round(y1 - cy - (y1 - y0) * 0.03) });
+    });
+    rels.data = enc.encode(relXml);
+    const ct = files.find(f => f.name === '[Content_Types].xml');
+    let ctXml = dec.decode(ct.data);
+    if (!/Extension="png"/i.test(ctXml)) ctXml = ctXml.replace('<Default ', '<Default Extension="png" ContentType="image/png"/><Default ');
+    ct.data = enc.encode(ctXml);
   }
 
   async function buildReferto(game, st) {
@@ -446,11 +492,12 @@
     const dec = new TextDecoder(), enc = new TextEncoder();
     const sh = new Sheet(dec.decode(sheetF.data), dec.decode(stylesF.data));
     fill(sh, L, game, st);
+    addSignatures(sh, L, game, files);
     const out = sh.serialize();
     sheetF.data = enc.encode(out.sheet);
     stylesF.data = enc.encode(out.styles);
     const drawF = files.find(f => /^xl\/drawings\/drawing\d+\.xml$/.test(f.name));
-    if (drawF && (sh.lines.length || sh.circles.length)) drawF.data = enc.encode(addDrawings(dec.decode(drawF.data), sh));
+    if (drawF && (sh.lines.length || sh.circles.length || sh.pictures.length)) drawF.data = enc.encode(addDrawings(dec.decode(drawF.data), sh));
     return zip(files.filter(f => f.name !== 'xl/calcChain.xml'));
   }
 

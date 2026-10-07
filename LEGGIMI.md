@@ -23,7 +23,10 @@ Web app offline per compilare il referto delle gare di Minibasket FIP, con le re
    La compilazione riproduce quella a mano: un colore per periodo (rosso, blu, verde, ripetuti), falli con il
    periodo (`P3`), barra sui numeri del punteggio progressivo e sulle sospensioni, totale della squadra nel periodo
    cerchiato in grande a metà della linea diagonale di chiusura di ogni tempo, croce sui punti del periodo, anno di nascita a sinistra del nome, addetto DAE in alto.
-6. **Salvataggio** – tutto è salvato sul dispositivo a ogni azione; referto `.xlsx` e backup `.json` vengono
+6. **Firme** – nella schermata del referto ogni firma (Istruttore A e B, segnapunti, cronometrista, arbitri)
+   si raccoglie con il dito, la penna o il mouse; le firme vengono posate sulle righe "FIRME" del referto Excel
+   e compaiono nella stampa/PDF. Se il referto viene modificato dopo una firma, l'app lo segnala.
+7. **Salvataggio** – tutto è salvato sul dispositivo a ogni azione; referto `.xlsx` e backup `.json` vengono
    salvati nella cartella Google Drive indicata (in coda se offline, inviati al ritorno della connessione).
 
 ## Avvio

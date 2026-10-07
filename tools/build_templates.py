@@ -191,6 +191,21 @@ def analyse(key):
     fa = find_label(ws, r"^A[\.…]", range(last_coach + 1, ws.max_row + 1))
     fb = find_label(ws, r"^B[\.…]", range(last_coach + 1, ws.max_row + 1))
     L["final"] = {"A": ref(*fa), "B": ref(*fb)}
+
+    # --- firme: righe (celle unite con bordo inferiore) sotto ogni etichetta ---
+    labels = []
+    for name in ["ISTRUTTORI", "SEGNAPUNTI", "CRONOMETRISTA", "ARBITRI"]:
+        pos = find_label(ws, "^" + name, range(last_coach + 1, ws.max_row + 1))
+        assert pos, (key, name)
+        m = merged_at(ws, *pos)
+        labels.append((name.lower(), pos[0], m.min_col, m.max_col))
+    sig = {}
+    for name, row, c0, c1 in labels:
+        nxt = min([r for n, r, a0, a1 in labels if a0 == c0 and r > row] + [ws.max_row + 1])
+        lines = sorted(m.min_row for m in ws.merged_cells.ranges
+                       if m.min_col == c0 and m.max_col == c1 and row < m.min_row < nxt and has_bottom_border(ws, m.min_row, c0))
+        sig[name] = [{"c0": c0, "c1": c1, "row": r} for r in lines]
+    L["signatures"] = sig
     return L
 
 
@@ -205,7 +220,7 @@ def main():
         f.write("window.REFERTO_LAYOUTS = " + json.dumps(layouts, ensure_ascii=False) + ";\n")
         f.write("window.REFERTO_FILES = " + json.dumps(files) + ";\n")
     for k in KEYS:
-        print(k, "spareggio", layouts[k]["spareggio"])
+        print(k, "firme", {n: [x["row"] for x in v] for n, v in layouts[k]["signatures"].items()})
     for k in KEYS:
         L = layouts[k]
         print(k, L["header"], "rows", len(L["teams"][0]["playerRows"]), "entr", len(L["teams"][0]["entrateCols"]),

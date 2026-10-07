@@ -703,6 +703,120 @@
     }
   }
 
+  // ================================================================= FIRME
+  function signSlots() {
+    const sigs = game.signatures || {};
+    const coach = t => game.teams[t].coaches.map(c => c.name).filter(Boolean).join(' / ');
+    const refs = (game.info.arbitri || '').split(/\s*(?:,|;|\/|\s-\s|\se\s)\s*/).filter(Boolean);
+    return [
+      { key: 'istruttoreA', label: `Istruttore ${teamName('A')}`, name: coach('A') },
+      { key: 'istruttoreB', label: `Istruttore ${teamName('B')}`, name: coach('B') },
+      { key: 'segnapunti', label: 'Segnapunti', name: game.info.segnapunti },
+      { key: 'cronometrista', label: 'Cronometrista', name: game.info.cronometrista },
+      { key: 'arbitro1', label: 'Arbitro', name: refs[0] || '' },
+      { key: 'arbitro2', label: '2° Arbitro (se presente)', name: refs[1] || '' }
+    ].map(x => Object.assign(x, sigs[x.key] || {}));
+  }
+
+  function renderSignCard() {
+    const last = game.events.reduce((m, e) => Math.max(m, e.at || 0), 0);
+    const slots = signSlots();
+    const done = slots.filter(x => x.img).length;
+    return `<div class="card"><div class="row between"><h2 style="margin:0">Firme</h2><small class="muted">${done} di ${slots.length} – inserite nel referto Excel e nella stampa</small></div>
+      ${!st.finished ? '<div class="notice info">Le firme si raccolgono normalmente a fine gara.</div>' : ''}
+      <div class="sign-grid">${slots.map(x => `<div class="sign-slot ${x.img ? 'signed' : ''}">
+        <div class="sign-head"><b>${esc(x.label)}</b><small class="muted">${esc(x.name || '')}</small></div>
+        <div class="sign-preview">${x.img ? `<img src="${x.img}" alt="Firma ${esc(x.label)}">` : '<span class="muted">Non firmato</span>'}</div>
+        ${x.img && x.at && last > Date.parse(x.at) ? '<div class="notice warn" style="margin:4px 0">Il referto è stato modificato dopo la firma.</div>' : ''}
+        <div class="row"><button class="btn small ${x.img ? '' : 'primary'}" data-act="sign" data-key="${x.key}">${x.img ? 'Rifai firma' : 'Firma'}</button>
+        ${x.img ? `<button class="btn small danger" data-act="unsign" data-key="${x.key}">Rimuovi</button>` : ''}</div></div>`).join('')}</div></div>`;
+  }
+
+  function openSignPad(key) {
+    const slot = signSlots().find(x => x.key === key);
+    let pad = null;
+    openModal({
+      title: `Firma: ${esc(slot.label)}`, wide: true,
+      body: `<p class="muted">${slot.name ? `Firma di <b>${esc(slot.name)}</b>. ` : ''}Firma con il dito, la penna o il mouse nel riquadro.</p>
+        <div class="sigpad"><canvas id="sigCanvas" aria-label="Area firma"></canvas><div class="sigpad-line"></div><span class="sigpad-x">✕</span></div>`,
+      foot: '<button class="btn" data-act="clear">Cancella</button><span class="grow"></span><button class="btn" data-act="__close">Annulla</button><button class="btn primary" data-act="save">Salva firma</button>',
+      handlers: {
+        clear: () => pad.clear(),
+        save: () => {
+          const out = pad.export();
+          if (!out) { toast('Il riquadro è vuoto: firma prima di salvare.'); return; }
+          game.signatures = game.signatures || {};
+          game.signatures[key] = Object.assign(out, { at: new Date().toISOString(), name: slot.name || '' });
+          persist(); closeModal(); render();
+          toast('Firma salvata.');
+          if (st.finished) saveToCloud(true, true);
+        }
+      }
+    });
+    pad = signaturePad($('#sigCanvas'));
+  }
+
+  // area di firma: tratto a penna con pressione (stilo) e curve levigate
+  function signaturePad(canvas) {
+    const ctx = canvas.getContext('2d');
+    const dpr = Math.max(1, window.devicePixelRatio || 1);
+    let drawing = false, last = null, mid = null, empty = true;
+    // adatta la risoluzione del canvas alla dimensione visibile (solo se vuoto: ridimensionare lo cancella)
+    const fit = () => {
+      const r = canvas.getBoundingClientRect();
+      const w = Math.max(1, Math.round(r.width * dpr)), h = Math.max(1, Math.round(r.height * dpr));
+      if (canvas.width === w && canvas.height === h) return;
+      canvas.width = w; canvas.height = h;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = '#14246b'; ctx.fillStyle = '#14246b';
+    };
+    fit();
+    const pos = e => { const b = canvas.getBoundingClientRect(); return { x: e.clientX - b.left, y: e.clientY - b.top, p: e.pointerType === 'pen' ? e.pressure : 0 }; };
+    const width = pt => (pt.p ? 1.4 + pt.p * 3 : 2.6);
+    canvas.addEventListener('pointerdown', e => {
+      e.preventDefault(); canvas.setPointerCapture(e.pointerId);
+      if (empty) fit();
+      drawing = true; last = pos(e); mid = last; empty = false;
+      ctx.beginPath(); ctx.arc(last.x, last.y, width(last) / 2, 0, Math.PI * 2); ctx.fill();
+    });
+    canvas.addEventListener('pointermove', e => {
+      if (!drawing) return;
+      e.preventDefault();
+      const evs = e.getCoalescedEvents ? e.getCoalescedEvents() : [];
+      for (const ev of evs.length ? evs : [e]) {
+        const p = pos(ev);
+        const m = { x: (last.x + p.x) / 2, y: (last.y + p.y) / 2 };
+        ctx.lineWidth = width(p);
+        ctx.beginPath(); ctx.moveTo(mid.x, mid.y); ctx.quadraticCurveTo(last.x, last.y, m.x, m.y); ctx.stroke();
+        last = p; mid = m;
+      }
+    });
+    const end = () => { if (drawing) { ctx.beginPath(); ctx.moveTo(mid.x, mid.y); ctx.lineTo(last.x, last.y); ctx.stroke(); } drawing = false; };
+    canvas.addEventListener('pointerup', end); canvas.addEventListener('pointercancel', end);
+    return {
+      clear() { ctx.clearRect(0, 0, canvas.width, canvas.height); empty = true; },
+      // ritaglia la firma e la riduce (max 600 px di larghezza) per tenere leggero il salvataggio
+      export() {
+        if (empty) return null;
+        const W = canvas.width, H = canvas.height;
+        const data = ctx.getImageData(0, 0, W, H).data;
+        let x0 = W, y0 = H, x1 = -1, y1 = -1;
+        for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (data[(y * W + x) * 4 + 3] > 10) {
+          if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y;
+        }
+        if (x1 < 0) return null;
+        const pad = Math.round(6 * dpr);
+        x0 = Math.max(0, x0 - pad); y0 = Math.max(0, y0 - pad); x1 = Math.min(W - 1, x1 + pad); y1 = Math.min(H - 1, y1 + pad);
+        const w = x1 - x0 + 1, h = y1 - y0 + 1, k = Math.min(1, 600 / w);
+        const out = document.createElement('canvas');
+        out.width = Math.max(1, Math.round(w * k)); out.height = Math.max(1, Math.round(h * k));
+        const o = out.getContext('2d'); o.imageSmoothingQuality = 'high';
+        o.drawImage(canvas, x0, y0, w, h, 0, 0, out.width, out.height);
+        return { img: out.toDataURL('image/png'), w: out.width, h: out.height };
+      }
+    };
+  }
+
   // ================================================================= RIEPILOGO / REFERTO
   function renderSummary() {
     const rules = st.rules;
@@ -761,6 +875,7 @@
           <button class="btn" data-act="exportJson">Backup partita (.json)</button>
         </div>
       </div>
+      ${renderSignCard()}
       <div class="card"><h2>Tabellino</h2>${teamTable('A')}${teamTable('B')}</div>
       <div class="card"><h2>Altre azioni</h2><div class="row">
         <button class="btn" data-act="undo" ${game.events.length ? '' : 'disabled'}>↶ Annulla ultima azione</button>
@@ -826,7 +941,7 @@
       <table style="width:auto"><thead><tr><th class="l">Punti</th>${Array.from({ length: P }, (_, i) => `<th>${i + 1}°</th>`).join('')}${st.spareggio ? '<th>Spar.</th>' : ''}<th>Finale</th></tr></thead><tbody>
       ${['A', 'B'].map((t, k) => `<tr><td class="l">${t} – ${esc(teamName(t))}</td>${Array.from({ length: P }, (_, i) => `<td>${st.periodPoints[i] ? st.periodPoints[i][k] : ''}</td>`).join('')}${st.spareggio ? `<td>${st.spareggio === t ? 3 : 1}</td>` : ''}<td><b>${st.final[t]}</b></td></tr>`).join('')}
       </tbody></table>
-      <div class="sign"><div>Istruttori</div><div>Segnapunti</div><div>Cronometrista</div><div>Arbitri</div></div>`;
+      <div class="sign">${signSlots().map(x => `<div>${x.img ? `<img src="${x.img}" alt="">` : '<span class="blank"></span>'}${esc(x.label)}${x.name ? ' – ' + esc(x.name) : ''}</div>`).join('')}</div>`;
   }
 
   // ================================================================= IMPOSTAZIONI
@@ -996,6 +1111,13 @@
     },
     printSheet: () => { renderPrint(); setTimeout(() => window.print(), 50); },
     exportJson: () => download(jsonBlob(), baseName(game) + '.json'),
+    sign: d => openSignPad(d.key),
+    unsign: d => {
+      const x = signSlots().find(y => y.key === d.key);
+      confirmModal('Rimuovere la firma?', `<p>${esc(x.label)}${x.name ? ' – ' + esc(x.name) : ''}</p>`, 'Rimuovi', () => {
+        delete game.signatures[d.key]; persist(); render();
+      }, true);
+    },
     saveCloud: () => saveToCloud(true, false),
     // impostazioni
     cloudMode: d => {
