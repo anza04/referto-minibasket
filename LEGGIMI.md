@@ -56,6 +56,11 @@ In *Impostazioni → Salvataggio su cloud* scegli una delle due modalità:
 4. Nell'app incolla il **Client ID** e il **link della cartella Drive** (es. `https://drive.google.com/drive/folders/…`)
    e premi *Salva e collega*.
 
+**Configurazione condivisa**: Client ID e cartella Drive della società si impostano una volta sola in
+`js/config.js`; ogni dispositivo che apre l'app li trova già compilati (le impostazioni fatte sul singolo
+dispositivo hanno comunque la precedenza). L'accesso Google resta valido per circa un'ora anche se si ricarica
+la pagina; dopo il primo consenso, il nuovo accesso è un solo tocco.
+
 I file in attesa sono indicati dal badge in alto: toccandolo si forza la sincronizzazione
 (l'accesso Google dura circa un'ora, poi viene richiesto di nuovo con un tocco).
 

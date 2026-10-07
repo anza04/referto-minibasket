@@ -1,8 +1,8 @@
 /* Service worker: rende l'app completamente utilizzabile offline */
-const CACHE = 'referto-mb-v6';
+const CACHE = 'referto-mb-v7';
 const ASSETS = [
   './', './index.html', './manifest.webmanifest', './css/app.css',
-  './js/templates.js', './js/rules.js', './js/engine.js', './js/xlsx.js', './js/storage.js', './js/app.js',
+  './js/templates.js', './js/config.js', './js/rules.js', './js/engine.js', './js/xlsx.js', './js/storage.js', './js/app.js',
   './icons/logo-senna.png', './icons/icon-48.png', './icons/icon-180.png', './icons/icon-192.png', './icons/icon-512.png'
 ];
 

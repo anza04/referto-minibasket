@@ -30,7 +30,15 @@
   const DEFAULTS = { cloud: 'none', clientId: '', folder: '', folderName: '', variant: 'std', segnapunti: '', autoJson: true };
   const Settings = {
     get() {
-      try { return Object.assign({}, DEFAULTS, JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}')); } catch (e) { return Object.assign({}, DEFAULTS); }
+      let saved = {};
+      try { saved = JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}'); } catch (e) { /* impostazioni illeggibili */ }
+      const s = Object.assign({}, DEFAULTS, saved);
+      // valori della società (js/config.js) usati quando sul dispositivo non è stato impostato nulla
+      const C = window.MB_CONFIG || {};
+      if (!('cloud' in saved) && C.cloud) s.cloud = C.cloud;
+      if (!s.clientId && C.googleClientId) s.clientId = C.googleClientId;
+      if (!s.folder && C.driveFolder) { s.folder = C.driveFolder; s.folderName = s.folderName || C.driveFolderName || ''; }
+      return s;
     },
     set(patch) {
       const s = Object.assign(Settings.get(), patch);
@@ -51,7 +59,10 @@
         };
         r.onsuccess = () => res(r.result);
         r.onerror = () => rej(r.error);
+        // se il browser blocca il database (es. altra scheda aperta) non restare in attesa per sempre
+        setTimeout(() => rej(new Error('Archivio del browser non disponibile')), 5000);
       });
+      dbp.catch(() => { dbp = null; });
     }
     return dbp;
   }
@@ -75,6 +86,15 @@
   // ---------- Cloud ----------
   const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive';
   let token = null, tokenExp = 0, gisLoading = null, syncing = false;
+  // accesso Google ricordato fino alla scadenza (circa 1 ora), anche dopo un ricaricamento della pagina
+  const TOKEN_KEY = 'mb.googleToken', CONSENT_KEY = 'mb.googleConsent';
+  try {
+    const t = JSON.parse(localStorage.getItem(TOKEN_KEY) || 'null');
+    if (t && t.exp > Date.now() + 60000) { token = t.token; tokenExp = t.exp; }
+  } catch (e) { /* nessun accesso salvato */ }
+  function saveToken() {
+    try { if (token) localStorage.setItem(TOKEN_KEY, JSON.stringify({ token, exp: tokenExp })); else localStorage.removeItem(TOKEN_KEY); } catch (e) { /* ignora */ }
+  }
 
   function emit(detail) { window.dispatchEvent(new CustomEvent('mb-sync', { detail })); }
 
@@ -112,17 +132,22 @@
         callback: r => {
           if (r.error) return rej(new Error('Accesso Google negato: ' + r.error));
           token = r.access_token; tokenExp = Date.now() + (r.expires_in || 3600) * 1000;
+          saveToken();
+          try { localStorage.setItem(CONSENT_KEY, '1'); } catch (e) { /* ignora */ }
           res(token);
         },
         error_callback: e => rej(new Error('Accesso Google annullato: ' + (e && e.type || '')))
       });
-      client.requestAccessToken({ prompt: token ? '' : 'consent' });
+      // dopo il primo consenso basta un tocco: niente più schermata di autorizzazione
+      let consented = false;
+      try { consented = localStorage.getItem(CONSENT_KEY) === '1'; } catch (e) { /* ignora */ }
+      client.requestAccessToken({ prompt: consented ? '' : 'consent' });
     });
   }
 
   async function driveFetch(url, opts) {
     const r = await fetch(url, Object.assign({}, opts, { headers: Object.assign({ Authorization: 'Bearer ' + token }, (opts && opts.headers) || {}) }));
-    if (r.status === 401) { token = null; throw new Error('Sessione Google scaduta: premi "Sincronizza".'); }
+    if (r.status === 401) { token = null; saveToken(); throw new Error('Sessione Google scaduta: premi "Sincronizza".'); }
     if (!r.ok) throw new Error('Google Drive: ' + r.status + ' ' + (await r.text()).slice(0, 200));
     return r.json();
   }
